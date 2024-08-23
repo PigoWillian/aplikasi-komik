@@ -11,7 +11,6 @@ class CategoryScreen extends StatefulWidget {
 }
 
 class _CategoryScreenState extends State<CategoryScreen> {
-  // List of categories or text items
   final List<String> categories = [
     'All',
     'Action',
@@ -27,29 +26,22 @@ class _CategoryScreenState extends State<CategoryScreen> {
     'Isekai',
   ];
 
-  // The currently selected category
   String selectedCategory = 'All';
-
-  // Data to be displayed in the GridView
   List<dynamic> items = [];
-
   List<String> mangaIds = [];
 
   @override
   void initState() {
     super.initState();
-    // Load data for the initial category
     fetchItems(selectedCategory);
   }
 
   void fetchItems(String category) async {
     setState(() {
-      // Simulate a loading state
       items = [];
     });
 
     try {
-      // Replace with your API endpoint
       final url = 'http://10.0.2.2:3000/api/mangaList?category=$category';
       final response = await http.get(Uri.parse(url));
 
@@ -77,7 +69,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
       ),
       body: Column(
         children: [
-          // Categories grid
           Container(
             color: Colors.transparent,
             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -93,8 +84,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     if (selectedCategory != category) {
                       setState(() {
                         selectedCategory = category;
-                        fetchItems(
-                            category); // Fetch items for the selected category
+                        fetchItems(category);
                       });
                     }
                   },
@@ -124,7 +114,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
               }).toList(),
             ),
           ),
-          // GridView to display items
           Expanded(
             child: GridView.builder(
               padding: const EdgeInsets.all(8),
@@ -140,19 +129,22 @@ class _CategoryScreenState extends State<CategoryScreen> {
                 final title = item['title'];
                 final imageUrl = item['image'];
                 final view = item['view'];
+                final mangaId = item['id'];
+
                 return GestureDetector(
                   onTap: () async {
-                    final mangaId = item['id'];
                     print('Fetching details for manga ID: $mangaId');
                     final mangaDetail = await fetchMangaDetail(mangaId);
                     if (mangaDetail != null) {
                       Navigator.pushNamed(
                         context,
                         'mangaDetail',
-                        arguments: mangaDetail,
+                        arguments: {
+                          'mangaDetail': mangaDetail,
+                          'mangaId': mangaId,
+                        },
                       );
                     } else {
-                      // Handle error
                       print('Failed to fetch manga details for ID: $mangaId');
                     }
                   },

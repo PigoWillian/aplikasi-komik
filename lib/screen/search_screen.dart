@@ -4,7 +4,9 @@ import 'package:app_komik_manga/Api/fetch_manga_detail.dart'; // Ensure this imp
 import 'package:app_komik_manga/models/manga_search.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  final String mangaId;
+
+  const SearchScreen({super.key, required this.mangaId});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -48,11 +50,14 @@ class _SearchScreenState extends State<SearchScreen> {
         Navigator.pushNamed(
           context,
           'mangaDetail',
-          arguments: mangaDetail,
+          arguments: {
+            'mangaDetail': mangaDetail,
+            'mangaId': mangaSearch.id,
+          },
         );
       } else {
         // Handle the case where mangaDetail is null
-        print('No details available for this manga');
+        print('No details available for this manga ID: ${mangaSearch.id}');
       }
     } catch (e) {
       print('Error fetching manga detail: $e');

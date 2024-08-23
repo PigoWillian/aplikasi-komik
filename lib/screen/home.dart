@@ -1,5 +1,6 @@
 import 'dart:convert';
-
+import 'package:app_komik_manga/Api/fetch_manga_chapter.dart';
+import 'package:app_komik_manga/models/chapter.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
@@ -15,8 +16,8 @@ class Home extends StatefulWidget {
 class _HomeScreenState extends State<Home> {
   List<dynamic> manga = [];
   List<String> imageUrls = [];
-  List<String> mangaIds = []; // List to store manga IDs associated with images
-  // int _currentScreenIndex = 0;
+  List<String> mangaIds = [];
+  bool _isLoading = true; // Added to handle loading state
 
   @override
   void initState() {
@@ -37,7 +38,7 @@ class _HomeScreenState extends State<Home> {
           textAlign: TextAlign.justify,
         ),
       ),
-      body: manga.isEmpty
+      body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: Column(
@@ -50,7 +51,7 @@ class _HomeScreenState extends State<Home> {
                         Container(
                           margin: EdgeInsets.only(bottom: 20, top: 20),
                           child: Text(
-                            "Recomendation",
+                            "Top View",
                             style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 20,
@@ -66,18 +67,26 @@ class _HomeScreenState extends State<Home> {
                                 final mangaId = mangaIds[index];
                                 print(
                                     'Fetching details for manga ID: $mangaId');
+
+                                // Fetch manga details
                                 final mangaDetail =
                                     await fetchMangaDetail(mangaId);
-                                if (mangaDetail != null) {
-                                  Navigator.pushNamed(
-                                    context,
-                                    'mangaDetail',
-                                    arguments: mangaDetail,
-                                  );
-                                } else {
-                                  // Handle error
-                                  print(
-                                      'Failed to fetch manga details for ID: $mangaId');
+
+                                if (mounted) {
+                                  if (mangaDetail != null) {
+                                    Navigator.pushNamed(
+                                      context,
+                                      'mangaDetail',
+                                      arguments: {
+                                        'mangaDetail': mangaDetail,
+                                        'mangaId':
+                                            mangaId, // Pass mangaId as well
+                                      },
+                                    );
+                                  } else {
+                                    print(
+                                        'Failed to fetch manga details for ID: $mangaId');
+                                  }
                                 }
                               },
                               child: Image.network(
@@ -88,12 +97,10 @@ class _HomeScreenState extends State<Home> {
                           }).toList(),
                           options: CarouselOptions(
                             enableInfiniteScroll: false,
-                            viewportFraction:
-                                0.4, // Adjust to control the item width and spacing
+                            viewportFraction: 0.4,
                             initialPage: 0,
                             height: MediaQuery.of(context).size.height / 4,
-                            enlargeCenterPage:
-                                true, // Optional: enlarges the center item for emphasis
+                            enlargeCenterPage: true,
                           ),
                         ),
                         Row(
@@ -143,22 +150,60 @@ class _HomeScreenState extends State<Home> {
                     children: manga.map((mangaItem) {
                       final title = mangaItem['title'];
                       final imageUrl = mangaItem['image'];
-                      final chapter = mangaItem['chapter'];
+                      final chapterId = mangaItem['chapter'];
+
                       return GestureDetector(
                         onTap: () async {
-                          final mangaId = mangaItem['id'];
-                          print('Fetching details for manga ID: $mangaId');
-                          final mangaDetail = await fetchMangaDetail(mangaId);
-                          if (mangaDetail != null) {
-                            Navigator.pushNamed(
-                              context,
-                              'mangaDetail',
-                              arguments: mangaDetail,
-                            );
-                          } else {
-                            // Handle error
+                          final mangaId = mangaItem['id'] ?? '';
+                          print('mangaId before fetching details: $mangaId');
+
+                          if (mangaId.isNotEmpty) {
                             print(
-                                'Failed to fetch manga details for ID: $mangaId');
+                                'Fetching initial chapter content for mangaId: $mangaId');
+                            final ContentChapter? initialChapterContent =
+                                await fetchChapterContent(mangaId, 'chapter-1');
+
+                            if (mounted) {
+                              if (initialChapterContent != null &&
+                                  initialChapterContent
+                                      .chapterListIds.isNotEmpty) {
+                                print(
+                                    'Fetched initial chapter content successfully.');
+                                final String? id = initialChapterContent
+                                    .chapterListIds.first.id;
+
+                                if (id != null && id.isNotEmpty) {
+                                  print(
+                                      'Fetching chapter content with valid id: $id');
+                                  final chapterContentWithId =
+                                      await fetchChapterContent(mangaId, id);
+
+                                  if (mounted) {
+                                    if (chapterContentWithId != null) {
+                                      Navigator.pushNamed(
+                                        context,
+                                        'mangaChapter',
+                                        arguments: {
+                                          'mangaId': mangaId,
+                                          'id': id,
+                                        },
+                                      );
+                                    } else {
+                                      print(
+                                          'Failed to fetch chapter content for mangaId: $mangaId, Chapter ID: $id');
+                                    }
+                                  }
+                                } else {
+                                  print(
+                                      'Invalid id retrieved from initial chapter content');
+                                }
+                              } else {
+                                print(
+                                    'Initial chapter content is null or has an empty chapterListIds');
+                              }
+                            }
+                          } else {
+                            print('Invalid mangaId, skipping this item');
                           }
                         },
                         child: Card(
@@ -203,7 +248,7 @@ class _HomeScreenState extends State<Home> {
                                       children: [
                                         Expanded(
                                           child: Text(
-                                            chapter,
+                                            chapterId,
                                             textAlign: TextAlign.start,
                                             style: TextStyle(
                                               color: Colors.white,
@@ -226,67 +271,26 @@ class _HomeScreenState extends State<Home> {
                 ],
               ),
             ),
-      // bottomNavigationBar: BottomNavigationBar(
-      //   backgroundColor: Theme.of(context).dialogBackgroundColor,
-      //   currentIndex: _currentScreenIndex,
-      //   onTap: (index) {
-      //     setState(() {
-      //       _currentScreenIndex = index;
-      //     });
-      //     if (index == 1) {
-      //       Navigator.pushNamed(context, 'search');
-      //     } else if (index == 2) {
-      //       Navigator.pushNamed(context, 'Genres');
-      //     } else if (index == 3) {
-      //       Navigator.pushNamed(context, 'Settings');
-      //     }
-      //   },
-      //   items: const [
-      //     BottomNavigationBarItem(
-      //       backgroundColor: Colors.black,
-      //       icon: Icon(
-      //         Icons.home,
-      //         color: Colors.grey,
-      //       ),
-      //       label: 'Home',
-      //     ),
-      //     BottomNavigationBarItem(
-      //       backgroundColor: Colors.black,
-      //       icon: Icon(Icons.search, color: Colors.grey),
-      //       label: 'Search',
-      //     ),
-      //     BottomNavigationBarItem(
-      //       backgroundColor: Colors.black,
-      //       icon: Icon(Icons.category, color: Colors.grey),
-      //       label: 'Genres',
-      //     ),
-      //     BottomNavigationBarItem(
-      //       backgroundColor: Colors.black,
-      //       icon: Icon(
-      //         Icons.settings,
-      //         color: Colors.grey,
-      //       ),
-      //       label: 'Settings',
-      //     ),
-      //   ],
-      // ),
     );
   }
 
-  void fetchManga() async {
+  Future<void> fetchManga() async {
     try {
-      const url = "http://10.0.2.2:3000/api/mangaList?page=3";
+      const url = "http://10.0.2.2:3000/api/mangaList?page=4";
       final uri = Uri.parse(url);
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
-        setState(() {
-          manga = json['mangaList'];
-          mangaIds = manga
-              .map<String>((item) => item['id'])
-              .toList(); // Store manga IDs
-        });
+        if (mounted) {
+          setState(() {
+            manga = json['mangaList'];
+            mangaIds = manga
+                .map<String>((item) => item['id'])
+                .toList(); // Store manga IDs
+            _isLoading = false; // Set loading to false
+          });
+        }
         print('fetchManga Completed');
       } else {
         print('Error fetching manga data: ${response.statusCode}');
@@ -297,21 +301,28 @@ class _HomeScreenState extends State<Home> {
   }
 
   Future<void> fetchImageUrls() async {
-    final response = await http
-        .get(Uri.parse('http://10.0.2.2:3000/api/mangaList?category=Action'));
+    try {
+      final response = await http
+          .get(Uri.parse('http://10.0.2.2:3000/api/mangaList?category=Action'));
 
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> data = json.decode(response.body);
-      setState(() {
-        imageUrls = (data['mangaList'] as List)
-            .map((item) => item['image'] as String)
-            .toList();
-        mangaIds = (data['mangaList'] as List)
-            .map((item) => item['id'] as String)
-            .toList(); // Ensure mangaIds list is updated
-      });
-    } else {
-      throw Exception('Failed to load images');
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (mounted) {
+          setState(() {
+            imageUrls = (data['mangaList'] as List)
+                .map((item) => item['image'] as String)
+                .toList();
+            mangaIds = (data['mangaList'] as List)
+                .map((item) => item['id'] as String)
+                .toList(); // Store manga IDs associated with images
+            _isLoading = false; // Set loading to false
+          });
+        }
+      } else {
+        throw Exception('Failed to load images');
+      }
+    } catch (e) {
+      print('Error fetching image URLs: $e');
     }
   }
 }

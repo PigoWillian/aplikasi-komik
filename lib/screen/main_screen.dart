@@ -16,7 +16,9 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     Home(),
-    SearchScreen(),
+    SearchScreen(
+      mangaId: 'mangaId',
+    ),
     CategoryScreen(),
     SettingsScreen(),
   ];

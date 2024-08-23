@@ -86,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      loadAuth.islogin ? "Login" : "Register",
+                      loadAuth.islogin ? "Login" : "Register ",
                       style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: Theme.of(context)

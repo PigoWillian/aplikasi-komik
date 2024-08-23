@@ -19,9 +19,11 @@ class MyAuthProvider extends ChangeNotifier {
 
     try {
       if (islogin) {
+        // ignore: unused_local_variable
         final UserCredential = await _fireAuth.signInWithEmailAndPassword(
             email: enteredEmail, password: enteredPassword);
       } else {
+        // ignore: unused_local_variable
         final UserCredential = await _fireAuth.createUserWithEmailAndPassword(
             email: enteredEmail, password: enteredPassword);
       }
